@@ -450,9 +450,7 @@ def plot_slice_hist(painting, results, error_bars=False, save=False, title=True,
                     colors=[(1, 0, 0), (0, 0, 0), (0, 0.5, 0)],
                     selected_paths = False,
                     slice_sizes = False,
-                    threshold = 0.56,
-                    bw=False
-                    ):
+                    threshold = 0.56):
     acc_by_group, painting_acc_at_sizes, error_group,error_painting = utils_fastai.painting_acc_by_slice_size(results,prob = True)
     slice_size_list = [str(item) for item in results.slice_size.tolist()]
     min_size = min([int(item) for item in slice_size_list if item.isnumeric()])
@@ -501,11 +499,7 @@ def plot_slice_hist(painting, results, error_bars=False, save=False, title=True,
             ax_thumbs.append(fig.add_subplot(gs[0, i+2], facecolor='white'))
             ax_thumbs[i].axis('off')
             im = Image.open(selected_paths[i])
-            if bw:
-                im = im.convert('L')
-                ax_thumbs[i].imshow(im,cmap='gray')
-            else:
-                ax_thumbs[i].imshow(im)
+            ax_thumbs[i].imshow(im)
             if slice_sizes:
                 ax_thumbs[i].set_title(slice_sizes[i])
 
@@ -727,7 +721,7 @@ def make_inset_files_for_dial(comparators, path_to_test_img, save_pre_path, save
 
 
 
-def make_row_hist_combined(painting,img_path,learner_results,save_pre_path='',hist_save_name='hist_sim_P.png',save_folder='',one_vote = True,bw=False):
+def make_row_hist_combined(painting,img_path,learner_results,save_pre_path='',hist_save_name='hist_sim_P.png',save_folder='',one_vote = True):
     #get similar sized painting figures
     y_label = 'Pollock Signature'
     # print(painting)
@@ -743,8 +737,7 @@ def make_row_hist_combined(painting,img_path,learner_results,save_pre_path='',hi
                     dpi = 250,
                     one_vote = one_vote,
                     selected_paths = paths,
-                    slice_sizes=slice_sizes,
-                    bw = bw)
+                    slice_sizes=slice_sizes)
     # remove_vertical_white_padding(hist_save_sim_P,save=hist_save_sim_P,location = 0)
 
 
@@ -1054,7 +1047,7 @@ def pollock_dial(test_img_prob, res_df,
             dial_painting_names = dial_painting_thetas.index.tolist()
             if lines:
                 for i,painting in enumerate(dial_painting_names):
-                    ax = add_arrow(ax, start_height, convert_deg_to_rads(center_angle_dict[painting]),start_pos = (dial_x[i],dial_y[i]),
+                    ax = add_arrow(ax, start_height, convert_deg_to_rads(center_angle_dict[painting]),start_pos = (dial_x.iloc[i],dial_y.iloc[i]),
                                    ls=':',aa = aa_lines,lw = lw_lines)#,
                                 #    head_width=0.05*dot_radii,head_length=0.05*dot_radii)
             c = ax.scatter(dial_x, dial_y, marker='o', facecolor=colors[ii], edgecolor=colors[ii], s=pt_size+25, zorder=10,label = '')
@@ -1111,7 +1104,7 @@ def pollock_dial(test_img_prob, res_df,
     if save_name is not None:
         if len(save_name.split('.')) == 1:
             save_name += '.png'
-        plt.savefig(save_name,bbox_inches='tight',pad_inches = 0.0)
+        plt.savefig(save_name,bbox_inches='tight')
     if show_fig:
         plt.show()
     else:
@@ -1433,7 +1426,9 @@ def make_pollock_dial(test_image_name,test_image_PMF,
                       test_ext = '_cropped_C0_R0.tif',
                       lines = False,
                       dial_paintings = ['F34','D15', 'C71', 'A12', 'A66', 'P2(V)', 'P4(F)', 'C63', 'F65', 'JPCR_00173','P68(V)'], # 'F102''P86(S)','F34', 'C2'
-                      remove_special = ['P69(V)','P43(W)','JPCR_01031','A9(right)','JPCR_01088','P13(L)','P19(L)','P25(L)','P32(W)','P33(W Lowerqual)','P47(F Lowres)','P65(L)','P75(V)','P77(J)','P80(J)','P86(S)','P105(J)','P106(V)','P115(F Lowres)','A14(Left)'], #'JPCR_01030','P42(W)',
+                      remove_special = ['A9(right)','JPCR_01088','P13(L)','P19(L)','P25(L)','P32(W)',
+                      'P33(W Lowerqual)','P47(F Lowres)','P65(L)','P75(V)','P77(J)','P80(J)','P86(S)',
+                      'P105(J)','P106(V)','P115(F Lowres)','A14(Left)'],
                       save_fig = True,
                       show_fig = True,
                       specify_results = False, #this can be a results df which would speed up the code slightly if running multiple times. Otehrwise grabs from directory
@@ -1530,33 +1525,16 @@ def make_pollock_dial(test_image_name,test_image_PMF,
         plt.imshow(finished[:,:,[2,1,0]])
     #If you changed something in the pollock painting function and then things are misaligned check the function get_px_center_of_dial(), because I dont pass arguments through in a svelt way
 
-def plot_res_vs_PMF(r,master, save = False):
+def plot_res_vs_PMF(r,master):
     res_info = pd.merge(left = r[['painting','pollock_prob']], right = master[['file','px_per_cm_height','set','artist','remove_special']],left_on = 'painting',right_on = 'file')
     res = res_info[~res_info.remove_special & (res_info.set != 'train') & (res_info.artist != 'unknown')]
     fig = plt.figure(figsize = (10,6),facecolor='white')
-    plt.scatter(res[res.artist == 'Pollock'].px_per_cm_height,res[res.artist == 'Pollock'].pollock_prob, c= 'green')
-    plt.scatter(res[res.artist != 'Pollock'].px_per_cm_height,res[res.artist != 'Pollock'].pollock_prob, c = 'red')
-    # Access the current Axes object
-    ax = plt.gca()
-    line_size = 2
-
-    fs = 20
-    # Set the linewidth of the spines (outer box lines)
-    ax.spines['top'].set_linewidth(line_size)    # Top border
-    ax.spines['bottom'].set_linewidth(line_size) # Bottom border
-    ax.spines['left'].set_linewidth(line_size)   # Left border
-    ax.spines['right'].set_linewidth(line_size)  # Right border
-    ax.xaxis.set_tick_params(labelsize=12)  # Change the fontsize for x tick labels
-    ax.yaxis.set_tick_params(labelsize=12)  # Change the fontsize for y tick labels
-
-    plt.xlabel('RF', fontsize=fs)
-    plt.ylabel('PMF', fontsize=fs)
-    plt.legend(['Pollock','non-Pollock'],fontsize = 16)
-    if save:
-        plt.savefig(save, bbox_inches='tight', dpi = 300)
-        plt.close()
-    else:
-        plt.show()
+    plt.scatter(res[res.artist == 'Pollock'].px_per_cm_height,res[res.artist == 'Pollock'].pollock_prob)
+    plt.scatter(res[res.artist != 'Pollock'].px_per_cm_height,res[res.artist != 'Pollock'].pollock_prob)
+    plt.xlabel('px_per_cm')
+    plt.ylabel('PMF')
+    plt.legend(['Pollock','non-Pollock'])
+    plt.show()
 
 def get_thresh_vs_MA(results,
                     master,
@@ -1586,8 +1564,6 @@ def get_thresh_vs_MA(results,
     plt.xticks(np.append(np.arange(0,1.1,0.1),threshs[max_index]),rotation = 90)
     plt.xlabel('Clasification Threshold')
     plt.ylabel('Machine Accuracy (%)')
-
-
     if save:
         plt.savefig(fig, bbox_inches='tight')
         plt.close()

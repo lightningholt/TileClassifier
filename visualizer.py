@@ -12,7 +12,6 @@ from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm
 from skimage.transform import resize as Resize
 from sklearn.metrics import mean_squared_error
-from plotting import make_row_hist_combined
 
 def create_onepainting(results,file_start,slice_size):
     # print(results.file.str.startswith(file_start))
@@ -589,13 +588,10 @@ def write_individual_slice_layers(padded,file_name,read_dir,
         # cv2.imwrite(os. path. join(save_path , file_name+'_gray_viz.tif'), img_gray)
 
         if i == len(padded)-1:
-            write_path = os.path.join(save_path,'combined_viz_' + 'Max'+extension)
-            pm_write_path = os.path.join(save_path,'pm_' + 'Max'+extension)
+            cv2.imwrite(os.path.join(save_path,'combined_viz_' + 'Max'+extension), img_comb)  
         else:
-            write_path = os.path.join(save_path,'combined_viz_' + str(10+i*5)+extension)
-            pm_write_path = os.path.join(save_path,'pm_' + str(10+i*5)+extension)
-        cv2.imwrite(write_path, img_comb) 
-        pollock_map(layer,hist_width = 0.4,blur=True,custom_cmap=True,save_path=pm_write_path,gradient = False,relative_radial = True,show_figure = False,save_individual=True)
+            cv2.imwrite(os.path.join(save_path,'combined_viz_' + str(10+i*5)+extension), img_comb)  
+        
         #give the mask some transparency
 #         img_cr = cv2.cvtColor(img_cr, cv2.COLOR_BGR2BGRA)
 #         img_cr[:, :, 3] = int(beta * 255)
@@ -620,9 +616,7 @@ def generate_report_viz(read_dir = 'Paintings/Processed/Raw/Full/',
                         relative_radial = False,
                         show_figure = True,
                         verbose = True,
-                        specify_viz_save = False,
-                        write_individual_pollock_maps = True,
-                        write_tile_hist = True
+                        specify_viz_save = False
                         ):
     #set default path
     if not path:                   
@@ -650,13 +644,9 @@ def generate_report_viz(read_dir = 'Paintings/Processed/Raw/Full/',
     if write_individual_layers:
         write_individual_slice_layers(padded,file_name,read_dir,save_path = path,line_mask=True,color = color,thickness_ratio = thickness_ratio,inverse_pollock_signatures=inverse_pollock_signatures,resize = resize,cmap = cmap)
     if write_pollock_map:
-        pollock_map(combined_result,hist_width = 0.4,blur = True,save_individual=True,custom_cmap=True,save_path=Path(path,'pollock_map.png'),gradient = False,colors =  pollock_map_colors,relative_radial = relative_radial,show_figure = show_figure)
+        pollock_map(combined_result,hist_width = 0.4,custom_cmap=True,save_path=Path(path,'pollock_map.png'),gradient = False,colors =  pollock_map_colors,relative_radial = relative_radial,show_figure = show_figure)
         overlay_cmap_on_image(combined_result,cmap,file_name, read_dir_full_cropped = read_dir,save=Path(path,'overlay.png'),show_figure = show_figure)
         # make_euc_edge_hists(master,file_name,combined_result,bin_width_cm = 10,start_loc = False,path=path)
-    if write_tile_hist:
-        make_row_hist_combined(file_name,str(Path(read_dir).parent),results,
-                                        save_pre_path=path,
-                                        hist_save_name='row_hist.png',save_folder='',one_vote = True)
 
     return combined_result,padded
 
@@ -982,17 +972,12 @@ def pollock_map(combined_result,
                 radial = False,
                 threshold = 0.56,
                 rescale = True,
-                round_to = 2,
-                save_individual = False,
-                kernel_size = 51,
-                sigma = 500
-                ):
+                round_to = 2):
     plt.ioff()
 
     cr = combined_result.copy()
     if blur:
-        # combined_result = gaussian_blur(combined_result,kernel_size = 51,sigma = 500)
-        combined_result = gaussian_blur(combined_result,kernel_size = kernel_size,sigma = sigma)
+        combined_result = gaussian_blur(combined_result,kernel_size = 51,sigma = 500)
 
     radial_matrix = get_radial_from_combined(combined_result,bin_width_px = bin_width_px)
     # Create a Figure, which doesn't have to be square.
@@ -1072,10 +1057,6 @@ def pollock_map(combined_result,
     max_val = np.max(combined_result)
     if custom_cmap:
         combined_result = cmap(combined_result)
-        if save_individual:
-            path_individual = Path(Path(save_path).parent,'I' + Path(save_path).stem + '_' + str(kernel_size) + '_' + str(sigma) + '.png')
-            plt.imsave(path_individual,combined_result)
-            print('saved ' + str(path_individual))
         if not relative_radial:
             radial_matrix = cmap(radial_matrix)
         im = ax.imshow(combined_result,cmap = cmap)
@@ -1132,11 +1113,7 @@ def pollock_map(combined_result,
         plt.show()
     else:
         plt.close()
-    if radial:
-        return radial_matrix
-    else:
-        return C,U
-    
+
 def get_custom_colormap(colors = [(0, 0, 1), (0, 0, 0), (0, 0.5, 0)],positions = [0, 0.56, 1]):
     # Define the custom colormap
     cmap = mcolors.LinearSegmentedColormap.from_list('custom_colormap', list(zip(positions, colors)))
@@ -1222,8 +1199,7 @@ def process_image_wrapper(read_dir_full_cropped = 'Paintings/Processed/Raw/Full'
                           item_tfms = False,
                           write_individual_layers = False,
                           do_report_data = True,
-                          update = False,
-                          resize = (500,500)
+                          update = False
                           ):
     if specific_files_in_master:
         assert isinstance(specific_files_in_master,list) , 'needs to be a list if used'
@@ -1248,6 +1224,7 @@ def process_image_wrapper(read_dir_full_cropped = 'Paintings/Processed/Raw/Full'
 
     viz_path_start = os.path.join(viz_dir,folder)
     save_pre_path = os.path.join(painting_preds_dir,folder)
+    resize = (500,500)
     bin_width_cm = 10
     for file_name in paintings:
         if update:

@@ -1,28 +1,10 @@
-import os
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-#matplotlib inline
-# from skimage.io import imread, imshow
-import PIL
 from fastai.vision.all import *
 from fastai.data.all import *
-import datetime
-import sys
-import time
-import multiprocessing
-# import util
-from util import vote_system, do_all_voting,get_paths,print_if
-import fastai
-import pathlib
-import albumentations as A
-import cv2
-import torch
+import pandas as pd
+import numpy as np
 import timm
-import re
-from util import vote_system
-import plotting
-# import dill
+import os
+import datetime
 
 def filter_file_path_list(file_paths,filter_away_items):
     #file paths should be 'fastcore.foundation.L'
@@ -38,25 +20,6 @@ def get_hold_out_files(M,hold_out_catalog,hold_out_files):
     #get hold out items
     hold_out_files = list(set(M[M.hold_out].file.tolist() + hold_out_files))
     return hold_out_files
-
-# def get_image_files_set_folders(path):
-#     return get_image_files(path, folders = folders)
-
-# def filter_file_path_list(file_paths,filter_away_items):
-#     #file paths should be 'fastcore.foundation.L'
-#     # filter_away_items can be a list or tuple of file names (as seen in master.file)
-#     return file_paths.filter(lambda o:not o.stem.startswith(tuple(filter_away_items)))
-
-# def get_image_files_filtered(path):
-#     file_paths = get_image_files_set_folders(path) #gets all files in select folders
-#     file_paths = filter_file_path_list(file_paths,hold_out_files) #Get's rid of hold out items
-#     # file_paths = filter_file_path_list(file_paths,M[M.file.str.startswith('P')].file.tolist())#get's rid of P's so we're just training on J's
-#     file_paths = filter_file_path_list(file_paths,M[M.file.str.startswith('B')].file.tolist())#get's rid of B's because they are unkown    
-#     #get rid of any stems that appear in folders but not in master 
-#     file_stems = list(set([item.stem.split('_cropped')[0] for item in file_paths]))
-#     file_stems = list(set(file_stems).difference(set(M.file.tolist())))
-#     file_paths = filter_file_path_list(file_paths,file_stems)
-#     return file_paths
 
 def append_str_today(string):
     today = datetime.datetime.now()
@@ -162,28 +125,21 @@ def is_pollock(x):
         return x.startswith(('P','J'))
     return x.name.startswith(('P','J'))
 
-def is_bidlo(x):
-   match = re.match(r'A(\d+)', x.stem)
-   if match:
-       number = int(match.group(1))
-       return 23 <= number <= 64
-   return False
-
-class AlbumentationsTransform(DisplayedTransform):
-    split_idx,order=0,2
-    def __init__(self, train_aug): store_attr()
+# class AlbumentationsTransform(DisplayedTransform):
+#     split_idx,order=0,2
+#     def __init__(self, train_aug): store_attr()
     
-    def encodes(self, img: PILImage):
-        aug_img = self.train_aug(image=np.array(img))['image']
-        return PILImage.create(aug_img)
-def get_train_aug(): return A.Compose([
-            A.ToGray(p=1.0),
-            # A.RandomBrightnessContrast(p=0.5),
-            # A.ColorJitter (brightness=0.2, contrast=0.2, saturation=0.5, hue=0.05,p=0.5),
-            # A.HorizontalFlip(p=0.5),
-            # A.VerticalFlip(p=0.5),
-            # A.RandomRotate90(p=0.5),
-        ])
+#     def encodes(self, img: PILImage):
+#         aug_img = self.train_aug(image=np.array(img))['image']
+#         return PILImage.create(aug_img)
+# def get_train_aug(): return A.Compose([
+#             # A.ToGray(p=0.5),
+#             A.RandomBrightnessContrast(p=0.5),
+#             # A.ColorJitter (brightness=0.2, contrast=0.2, saturation=0.5, hue=0.05,p=0.5),
+#             # A.HorizontalFlip(p=0.5),
+#             # A.VerticalFlip(p=0.5),
+#             # A.RandomRotate90(p=0.5),
+#         ])
 
 def get_dls(M,valid,path,folders,hold_out_files=[],px_size = 256,grayscale=False,flipped = True,multipath = False,bs = 64):
 
@@ -220,36 +176,6 @@ def get_dls(M,valid,path,folders,hold_out_files=[],px_size = 256,grayscale=False
         else:
             tfms = Resize(px_size)
         return tfms    
-    # def get_tfms(px_size,flipped = False,Albumentations = True):
-    #     if Albumentations:
-    #         tfms = A.Compose([
-    #             A.Resize(height = px_size,width = px_size,always_apply = True),
-    #             A.ToGray(p=0.5),
-    #             A.RandomBrightnessContrast(p=0.5),
-    #             A.HorizontalFlip(p=0.5),
-    #             A.VerticalFlip(p=0.5),
-    #             A.RandomRotate90(p=0.5),
-    #         ])
-    #     else:
-    #         if flipped:
-    #             tfms = [Resize(px_size),FlipItem(0.5)]
-    #         else:
-    #             tfms = Resize(px_size)
-    #     return tfms
-    # class AlbumentationsTransform(DisplayedTransform):
-    #     split_idx,order=0,2
-    #     def __init__(self, train_aug): store_attr()
-        
-    #     def encodes(self, img: PILImage):
-    #         aug_img = self.train_aug(image=np.array(img))['image']
-    #         return PILImage.create(aug_img)
-    # def get_train_aug(): return A.Compose([
-    #             A.ToGray(p=0.5),
-    #             A.RandomBrightnessContrast(p=0.5),
-    #             A.HorizontalFlip(p=0.5),
-    #             A.VerticalFlip(p=0.5),
-    #             A.RandomRotate90(p=0.5),
-    #         ])
         
     valid = [item + '_' for item in valid]
     splitter_by_painting = FuncSplitter(lambda o:o.stem.startswith(tuple(valid))) #Note that Path() is not required since 'o' is already a path object
@@ -261,16 +187,11 @@ def get_dls(M,valid,path,folders,hold_out_files=[],px_size = 256,grayscale=False
     paintblock = DataBlock((imblock, CategoryBlock),
                        get_items = get_image_files_filtered,#get_image_files_set_folders,
                        get_y     = is_pollock,
-                    #    get_y     = is_bidlo,
                        splitter  = splitter_by_painting,#RandomSplitter(), #splitter,
                     #    item_tfms = [Resize(px_size),AlbumentationsTransform(get_train_aug()) ])
                        item_tfms = get_tfms(px_size))
 
-    # paintsets = paintblock.datasets(path)
-    # # dsets.train[0]
     dls = paintblock.dataloaders(path,bs = bs)
-    # dls = paintblock.dataloaders(path)
-    # dls.show_batch()
     return dls
 
 def save_learner(dls,learn,save_path,with_opt=True):
@@ -284,16 +205,6 @@ def save_learner(dls,learn,save_path,with_opt=True):
         learn.save('learn')
     # # Just exports the model. Doesn't have info from the datablock
     learn.export('export.pkl')
-
-# #trying to make it work with albumentations
-# def save_learner(dls,learn,save_path):
-#     # # save pickle
-#     # torch.save(dls, Path(save_path, 'dls.pkl'))   
-#     # # exports the weights that can be loaded into our model we define before loading (just like we did before out first fine tune)
-#     # # Save the learner using torch.save
-#     # torch.save(learn, Path(save_path, 'learn.pth'))
-#     # # Just exports the model. Doesn't have info from the datablock
-#     learn.export('export.pkl')
 
 #model_run(M,'10-Max',folders = folders,valid_set = valid_list,notes= notes,seed = 42)
 def model_run(master, save_str, 
@@ -411,8 +322,8 @@ def model_run2(master, save_str,
                          '95','Max'],
               hold_out_catalog= ['93', '165', '179', '207', '231', '801', '820', '367', '371', '380','?'],
               hold_out_files = ['A57','A66','A64','A54(R)','C20','C55','C47(R)','D19','D8','E10','F114','F61','F110','F63','F94','F87','F99','G24','G58','G94','G62','G1','G27'],
-              hold_out_duplicates = ['P127', 'P128(Left)', 'P128(Right)', 'P129', 'P69(V)','P13(L)','P19(L)','P25(L)','P32(W)','P33(W Lowerqual)',
-'P47(F Lowres)','P65(L)','P75(V)','P77(J)','P80(J)','P86(S)','P105(J)','P106(V)','P115(F Lowres)','A14(Left)'], #added extra pollocks that were added later
+              hold_out_duplicates = ['P13(L)','P19(L)','P25(L)','P32(W)','P33(W Lowerqual)',
+'P47(F Lowres)','P65(L)','P75(V)','P77(J)','P80(J)','P86(S)','P105(J)','P106(V)','P115(F Lowres)','A14(Left)'],
               remove_duplicates = True,
               notes = '',
               overwrite = False,
@@ -422,15 +333,14 @@ def model_run2(master, save_str,
               bs = 64,
               pretrained=True,
               add_ho_to_valid = False,
-              type = '',
-              pre_path = 'runs'
+              type = ''
              ):
     #hold_out_files is typically used for just imitations because we want to hold out the entire catalog # for pollocks
     if seed:
         set_seeds(seed=seed,thread_num = thread_num)
     t = time.time()
     #valid_set can be a list that specifies the exact paintings in the validation set or a percentage
-    save_path = folder_management(save_str,pre_path=pre_path,overwrite=False)
+    save_path = folder_management(save_str,overwrite=False)
     if isinstance(valid_set, pd.DataFrame):
         valid_set = valid_set.valid_list.tolist()
     # if Descreened:
@@ -525,23 +435,10 @@ def model_run2(master, save_str,
             'epochs':[epochs],
             'hold_out_files_full':[hold_out_files_full],
             'model':[arch],
-            'img_path':[path],
-            'albumentations':["False"]
+            'img_path':[path]
             }
         quick_ref = pd.DataFrame(data=d)
         quick_ref.to_csv(os.path.join(save_path,'quick_ref.csv'))
-
-        plotting.make_pollock_dial('P2(V)',0.56,
-                    # learner_folder = save_path,
-                    lines = True,
-                    # remove_special = remove_special,
-                    save_name = 'dial.png',
-                    save_folder = save_path,
-                    show_fig = False,
-                    specify_results = learner_results,
-                    round_to = 2,
-                    threshold = classification_thresh
-                    )
 
     return metrics
 
@@ -1300,46 +1197,3 @@ def get_albumentations_tfms(transforms_list,always_apply = True):
         albumentations_tfms.append(transform)
 
     return A.Compose(albumentations_tfms)
-
-def get_data_partitioning():
-    #get the dls and learner from the model folder
-    folder_gcp =  'gcp_classifier-3_10-Max_color_10-15-2022'
-    dls_gcp, learn_gcp = load_dls_learner(folder_gcp,container_folder = 'runs',arch = resnet50,with_opt=True)
-    #get the tiles
-    learner_results_HO =get_learner_results(sets = ['hold_out']) #ran HO after the fact. Something is funny in this folder that the image folders there don't actually match perfectly with the results. So we have to emove extra things
-    #get the images
-    learner_r_HO = vote_system(learner_results_HO,decision_prob=0.56)
-
-    dls_gcp_train = list(set([item.stem.split('_c')[0] for item in dls_gcp.train.items]))
-    dls_gcp_valid = list(set([item.stem.split('_c')[0] for item in dls_gcp.valid.items]))
-
-    #these we removed for one reason or another (I wish we had a list of why for each)
-    remove_special = ['P69(V)','P43(W)','JPCR_01031','A9(right)','JPCR_01088','P13(L)','P19(L)','P25(L)','P32(W)','P33(W Lowerqual)','P47(F Lowres)','P65(L)','P75(V)','P77(J)','P80(J)','P86(S)','P105(J)','P106(V)','P115(F Lowres)','A14(Left)']
-    # remove_special = ['P43(W)','JPCR_01031','A9(right)','JPCR_01088','P13(L)','P19(L)','P25(L)','P32(W)','P33(W Lowerqual)','P47(F Lowres)','P65(L)','P75(V)','P77(J)','P80(J)','P86(S)','P105(J)','P106(V)','P115(F Lowres)','A14(Left)']
-    len_plus_remove_special = [str(len(remove_special))] + remove_special
-
-    # Sample data
-    Pollock_Train = sorted(list(set([item for item in dls_gcp_train if is_pollock(item)])-set(remove_special)))
-    Pollock_Train = [str(len(Pollock_Train))] + Pollock_Train
-    Pollock_Valid = sorted(list(set([item for item in dls_gcp_valid if is_pollock(item)])-set(remove_special)))
-    Pollock_Valid = [str(len(Pollock_Valid))] + Pollock_Valid
-    Pollock_HO = sorted(list(set([item for item in learner_r_HO.painting if is_pollock(item)]) - set(remove_special)-set(Pollock_Train)-set(Pollock_Valid))) # don't think this is needed here, but being prudent
-    Pollock_HO = [str(len(Pollock_HO))] + Pollock_HO
-    Non_Pollock_Train = sorted(list(set([item for item in dls_gcp_train if not is_pollock(item)])-set(remove_special)))
-    Non_Pollock_Train = [str(len(Non_Pollock_Train))] + Non_Pollock_Train
-    Non_Pollock_Valid = sorted(list(set([item for item in dls_gcp_valid if not is_pollock(item)])-set(remove_special)))
-    Non_Pollock_Valid = [str(len(Non_Pollock_Valid))] + Non_Pollock_Valid
-    ## get Non_Pollock_HO
-    # remove special,
-    # remove those that appear in the train set ['G10', 'G100', 'G11', 'G12', 'G13', 'G14', 'G15'], 
-    # and remove those that exist in the valid set ['G16', 'G17', 'G18', 'G19']
-    Non_Pollock_HO = sorted(list(set([item for item in learner_r_HO.painting if not is_pollock(item)]) - set(remove_special)-set(Non_Pollock_Train)-set(Non_Pollock_Valid))) 
-    Non_Pollock_HO = [str(len(Non_Pollock_HO))] + Non_Pollock_HO
-
-    # Fill missing values with NaN
-    df = pd.DataFrame(zip_longest(Pollock_Train, Pollock_Valid, Pollock_HO, Non_Pollock_Train,Non_Pollock_Valid,Non_Pollock_HO,len_plus_remove_special), 
-                    columns=['Pollock_Train', 'Pollock_Valid', 'Pollock_HO', 'Non_Pollock_Train','Non_Pollock_Valid','Non_Pollock_HO','remove_special'])
-    df.to_csv('data_partitioning.csv')
-
-    # Display the DataFrame
-    return df

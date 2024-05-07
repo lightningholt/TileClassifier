@@ -50,12 +50,6 @@ def make_report_data(master,learner_master,
                      do_res_tile = False,
                      res_tile_cm = 20,
                      res_factor = 30,
-                     res_folder = 'res_standard',
-                     resize = (500,500),
-                     pollock_categories = ('P','J'),
-                     np_categories = ('A','C','D','E','F','G'),
-                     pollock_viz_path_start = 'viz/PJ',
-                     np_viz_path_start = 'viz/NP_overlap',
                      dial_paintings = ['F22','D15', 'C2', 'F89', 'C45', 'P2(V)', 'P4(F)', 'C63', 'F65', 'JPCR_00173','P68(V)'] #'C2','A66','C53','A12',
                      
                     ):
@@ -74,8 +68,6 @@ def make_report_data(master,learner_master,
     # # print('learner_results',len(learner_results))
     # # print('learner_results_ho',len(learner_results_ho))
     learner_results = utils_fastai.get_learner_results(learner_folder=learner_folder,sets = ('valid','hold_out')) 
-
-    # learner_results_special_removed  = learner_results[~learner_results.file.str.startswith(tuple(remove_special))].reset_index() #removes hold out special
     
     #get rid of remove_special (hold_out_duplicates and those few files accidentally included)
     # filter_away_items = [item + '_c' for item in remove_special]
@@ -83,11 +75,7 @@ def make_report_data(master,learner_master,
     # print('learner_results',len(learner_results))
     folders = learner_metrics.folders.apply(eval).iloc[0]
     full_results = utils_fastai.get_learner_results(learner_folder=learner_folder,sets = ('train','valid','hold_out')) 
-
-    # full_results_special_removed  = full_results[~full_results.file.str.startswith(tuple(remove_special))].reset_index() #removes hold out special
-
     full_r = util.vote_system(full_results)
-    # full_r_special_removed = util.vote_system(full_results)
 
     df = master.copy()
     title = df.file.iloc[0]   
@@ -118,7 +106,7 @@ def make_report_data(master,learner_master,
                            gradient = False,
                            round_to = round_to_acc)
         else:
-            vz.process_image_wrapper(read_dir_full_cropped = os.path.join(img_path_testing,'Full'),
+            vz.process_image_wrapper(read_dir_full_cropped = os.path.join(img_path_testing,'full'),
                                     testing_master = master,
                                     learner_folder=learner_folder,
                                     group = group,
@@ -130,8 +118,6 @@ def make_report_data(master,learner_master,
                                     viz_dir = os.path.join('viz',sub_folder), #os.path.join(save_pre_path,save_folder,'viz'),
                                     painting_preds_dir = os.path.join('painting_preds',sub_folder), #os.path.join(save_pre_path,save_folder,'viz_preds'),
                                     specify_viz_save=False, #os.path.join(save_pre_path,save_folder,sub_dir,'select')
-                                    resize = resize,
-                                    item_tfms = item_tfms,
                                     write_individual_layers=write_individual_layers
                                     )
     if do_comparison_viz:
@@ -187,7 +173,7 @@ def make_report_data(master,learner_master,
         if not os.path.exists(os.path.join(container,learner_folder,stats_sub_dir)):
             os.makedirs(os.path.join(container,learner_folder,stats_sub_dir))
         scales = stats.get_scales(full_results,categories=False,add_max = True,verbose = False,save = os.path.join(container,learner_folder,stats_sub_dir,'scales.csv'))
-        stats.get_folder_data(res_folder,
+        stats.get_folder_data('res_standard',
                               container_folder = 'painting_preds',
                               notes = '',
                               img_path = 'resolution/Processed/Raw/',
@@ -195,12 +181,12 @@ def make_report_data(master,learner_master,
                               r_name= 'r_res.csv',
                               results_name='results_res.csv'
                               )
-        PJ = stats.get_stats(full_results,scales,learner_master,categories = pollock_categories,viz_path_start = pollock_viz_path_start,skip_viz=False,verbose =True,save = os.path.join(container,learner_folder,stats_sub_dir,'stats.csv'),do_year = True)
+        PJ = stats.get_stats(full_results,scales,learner_master,categories = ('P','J'),verbose =True,save = os.path.join(container,learner_folder,stats_sub_dir,'stats.csv'),do_year = True)
         NP = stats.get_stats(full_results,scales,learner_master,
-                             categories = np_categories,
+                             categories = ('A','C','D','E','F','G'),
                              verbose =True,
                              save = os.path.join(container,learner_folder,stats_sub_dir,'stats_NP.csv'),
-                             viz_path_start = np_viz_path_start,
+                             viz_path_start = 'viz/NP_overlap',
                              viz_path_end  = 'overlap',
                              skip_viz=False,
                              do_year = True)
@@ -308,7 +294,7 @@ def make_report_data(master,learner_master,
         min_tile = str(slice_sizes[0])
         next_min_tile = str(int(int(slice_sizes[0])+5))
         #get closest pollock
-        closest_df = utils_fastai.get_painting_closest_PMF(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = pollock_categories)
+        closest_df = utils_fastai.get_painting_closest_PMF(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = ('P','J'))
         closest = closest_df.painting.iloc[0]
         closestTitle = learner_master[learner_master.file == closest].title.iloc[0]
         # closest = closest.split('(')[0]
@@ -317,7 +303,7 @@ def make_report_data(master,learner_master,
         closest_diff = ("{0:."+str(round_to)+"f}").format(np.abs(closest_df.pollock_prob.iloc[0] - float(result)))
         
         #get closest_im
-        closest_df_im = utils_fastai.get_painting_closest_PMF(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = np_categories)
+        closest_df_im = utils_fastai.get_painting_closest_PMF(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = ('A', 'C', 'D', 'E', 'F', 'G'))
         closest_im = closest_df_im.painting.iloc[0]
         closestTitle_im = learner_master[learner_master.file == closest_im].title.iloc[0]
         # closest = closest.split('(')[0]
@@ -326,21 +312,21 @@ def make_report_data(master,learner_master,
         closest_diff_im = ("{0:."+str(round_to)+"f}").format(np.abs(closest_df_im.pollock_prob.iloc[0] - float(result)))
         
         #get highest_im
-        highest_df_im = utils_fastai.get_painting_closest_PMF(learner_results,1.0,one_vote=one_vote, binarize=False,catagory = np_categories)
+        highest_df_im = utils_fastai.get_painting_closest_PMF(learner_results,1.0,one_vote=one_vote, binarize=False,catagory = ('A', 'C', 'D', 'E', 'F', 'G'))
         highest_im = highest_df_im.painting.iloc[0]
         highestTitle_im = learner_master[learner_master.file == highest_im].title.iloc[0]
         highest_val_im = str_round(highest_df_im.pollock_prob.iloc[0],round_to)
         # highest_diff_im = str(round(np.abs(highest_df_im.pollock_prob.iloc[0] - float(result)),round_to))
         
         #get lowest pollock
-        lowest_df = utils_fastai.get_painting_closest_PMF(learner_results,0,one_vote=one_vote, binarize=False,catagory = pollock_categories)
+        lowest_df = utils_fastai.get_painting_closest_PMF(learner_results,0,one_vote=one_vote, binarize=False,catagory = ('P','J'))
         lowest = lowest_df.painting.iloc[0]
         lowestTitle = learner_master[learner_master.file == lowest].title.iloc[0]
         lowest_val = str_round(lowest_df.pollock_prob.iloc[0],round_to)    
         
 
 
-        below,above = utils_fastai.get_above_below_PMF_percentage(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = pollock_categories,round_to = round_to)
+        below,above = utils_fastai.get_above_below_PMF_percentage(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = ('P','J'),round_to = round_to)
         # closest_ov_df = utils_fastai.get_painting_closest_PMF(learner_results,float(result),one_vote=one_vote, binarize=False,catagory = ('P','J'))
         # closest_ov = closest_ov_df.painting.iloc[0].split('(')[0]
         # closest_ov_val = str(round(closest_ov_df.pollock_prob.iloc[0],round_to))
@@ -352,15 +338,15 @@ def make_report_data(master,learner_master,
             machine_confidence =learner_summary.painting_accuracy_mean.iloc[0]
         machine_confidence = ("{0:."+str(round_to)+"f}").format(100*machine_confidence)
         
-        machine_accuracy_paintings = rubric.get_machine_accuracy(learner_results,learner_master,remove_special = remove_special,catagory = pollock_categories,one_vote = one_vote,use_images = False,percent = round_to,binarize = False,binarize_prob=0.5,decision_prob=classification_thresh)
+        machine_accuracy_paintings = rubric.get_machine_accuracy(learner_results,learner_master,remove_special = remove_special,catagory = ('J','P'),one_vote = one_vote,use_images = False,percent = round_to,binarize = False,binarize_prob=0.5,decision_prob=classification_thresh)
         machine_accuracy_paintings = str_round(machine_accuracy_paintings,round_to_acc)
-        machine_accuracy_images = rubric.get_machine_accuracy(learner_results,learner_master,remove_special = remove_special,catagory = pollock_categories,one_vote = one_vote,use_images = True,percent = round_to,binarize = False,binarize_prob=0.5,decision_prob=classification_thresh)
+        machine_accuracy_images = rubric.get_machine_accuracy(learner_results,learner_master,remove_special = remove_special,catagory = ('J','P'),one_vote = one_vote,use_images = True,percent = round_to,binarize = False,binarize_prob=0.5,decision_prob=classification_thresh)
         machine_accuracy_images = str_round(machine_accuracy_images,round_to_acc)
 
         #get similar sized painting
 
         valid_set = learner_metrics.valid_set.apply(eval).iloc[0]
-        sim_pollock = utils_fastai.get_similar_min_dim_sized_painting(title,master,learner_master[learner_master.file.isin(valid_set)],catagory = pollock_categories)
+        sim_pollock = utils_fastai.get_similar_min_dim_sized_painting(title,master,learner_master[learner_master.file.isin(valid_set)],catagory = ('P','J'))
         
         select_r= util.vote_system(learner_results,one_vote=one_vote, binarize=False)
         #get select painting in learner results
@@ -414,7 +400,7 @@ def make_report_data(master,learner_master,
         test_paintings_accuracy = str_round(100*(1-len(r_T2[r_T2.failed])/len(r_T2)),round_to)
         r_BW,results_BW = stats.get_folder_data('bw_standard',load_results = True,container_folder = 'painting_preds',notes = '',img_path = 'BW_converted/Processed/Raw/')
         # print('bw_compare')
-        BW_C_compare = util.compare_BW_converted(full_results,results_BW) #changed to not include remove special
+        BW_C_compare = util.compare_BW_converted(full_results,results_BW)
         # print('finish bw compare')
         BWC_abs_diff = str_round(BW_C_compare.abs_PMF_diff.mean(),round_to)
         BWC_PMF_diff = str_round(BW_C_compare.PMF_diff.mean(),round_to)
@@ -427,8 +413,8 @@ def make_report_data(master,learner_master,
         Henri_failed = str_round(len(r_Henri[r_Henri.failed]),round_to)
         Henri_accuracy = str_round(100*(1-float(Henri_failed)/float(Henri_len)),round_to)
 
-        pollock_mean = str_round(full_r[full_r.painting.str.startswith(pollock_categories)].pollock_prob.mean(),round_to)
-        non_pollock_mean = str_round(full_r[~full_r.painting.str.startswith(pollock_categories)].pollock_prob.mean(),round_to)
+        pollock_mean = str_round(full_r[full_r.painting.str.startswith(('P','J'))].pollock_prob.mean(),round_to)
+        non_pollock_mean = str_round(full_r[~full_r.painting.str.startswith(('P','J'))].pollock_prob.mean(),round_to)
         P_mean = str_round(full_r[full_r.painting.str.startswith('P')].pollock_prob.mean(),round_to)
         J_mean = str_round(full_r[full_r.painting.str.startswith('J')].pollock_prob.mean(),round_to)
         PJ_diff = str_round(full_r[full_r.painting.str.startswith('J')].pollock_prob.mean()-full_r[full_r.painting.str.startswith('P')].pollock_prob.mean(),round_to)
@@ -477,6 +463,17 @@ def make_report_data(master,learner_master,
         
         #slice grids
         plotting.plot_slice_grid(name = title,folder = img_path_testing ,slice_size = '25',figsize=20,axes_pad=0.3,save=Path(save_pre_path,save_folder,sub_dir,'25_grid.png'),dpi=10)
+        # Max_grid_path = Path(save_pre_path,save_folder,'Max_grid.png')
+        # plotting.plot_slice_grid(name = title,folder = img_path_testing ,slice_size = 'Max',figsize=20,axes_pad=0.3,save=Max_grid_path,dpi=80)
+        # plotting.remove_vertical_white_padding(Max_grid_path,save=Max_grid_path,location = 0)
+        
+        #hists
+        # row_save = Path(save_pre_path,save_folder,sub_dir,'tile_row.png')
+        # plotting.make_slice_row_fig(name = title,slice_sizes=slice_sizes,folder = img_path_testing,figsize=(12, 4), dpi=80,save=row_save,selected_thumbnails = False)
+        # plotting.remove_vertical_white_padding(row_save,save=row_save,location =-1)
+        # hist_save = Path(save_pre_path,save_folder,sub_dir,'hist.png')
+        # plotting.plot_slice_hist(title,results,save=hist_save,title = False,dpi = 250,one_vote = one_vote)
+        # plotting.remove_vertical_white_padding(hist_save,save=hist_save,location = 0)
 
         #first for the test painting
         plotting.make_row_hist_combined(title,img_path_testing,results,
@@ -486,6 +483,23 @@ def make_report_data(master,learner_master,
                                         one_vote = one_vote)
         
 
+
+        
+        #get similar sized painting figures
+        # y_label = 'Pollock Signature'
+        # row_save_sim_P = Path(save_pre_path,save_folder,'tile_row_sim_P.png')
+        # plotting.make_slice_row_fig(name = sim_pollock,slice_sizes=slice_sizes,folder = img_path,figsize=(12, 4), dpi=80,save=row_save_sim_P,selected_thumbnails = False)
+        # plotting.remove_vertical_white_padding(row_save_sim_P,save=row_save_sim_P,location =-1)
+        # hist_save_sim_P = Path(save_pre_path,save_folder,'hist_sim_P.png')
+        # plotting.plot_slice_hist(sim_pollock,learner_results,save=hist_save_sim_P,y_label = y_label,title = False,dpi = 250,one_vote = one_vote)
+        # plotting.remove_vertical_white_padding(hist_save_sim_P,save=hist_save_sim_P,location = 0)
+
+        #get similar closest pollock
+        # plotting.make_row_hist_combined(closest,img_path,learner_results,save_pre_path=save_pre_path,row_save_name='tile_row_closest.png',hist_save_name='hist_closest.png',save_folder=save_folder,one_vote = one_vote)
+        
+        #closest_im
+        # plotting.make_row_hist_combined(closest_im,img_path,learner_results,save_pre_path=save_pre_path,row_save_name='tile_row_closest_im.png',hist_save_name='hist_closest_im.png',save_folder=save_folder,one_vote = one_vote)
+        
         #select
         plotting.make_row_hist_combined(select,img_path,learner_results,
                                         save_pre_path=save_pre_path,
@@ -510,6 +524,15 @@ def make_report_data(master,learner_master,
         else:
             print('test image path does not exist')
 
+        # plotting.dial_figure(full_img_path, test_img_prob, learner_results,
+        #  path_to_images=path_to_images,
+        #  ext=ext,
+        #  save_name=os.path.join(save_pre_path,save_folder,'dial.png'),
+        # OneVote = one_vote)
+
+        # test_image_name = '3B2A2134_482mp'
+        # test_image_PMF = 0.95
+        # test_image_path = 'Prometheus/Processed/Raw/Max/'
 
         plotting.make_pollock_dial(title,result,
                             test_image_path = img_path_testing,
@@ -546,7 +569,7 @@ def make_report_data(master,learner_master,
                         viz_path_end =  folder_str.split(title+'_')[1],
                         do_year = False
                         )
-        stats.plot_stats(PJ[PJ.painting.isin(remove_special)],
+        stats.plot_stats(PJ,
                          test_stats_or_list = test_stats[test_stats.painting == title],
                          save = os.path.join(save_pre_path,save_folder,sub_dir,'timeline.png'))
         
@@ -554,27 +577,11 @@ def make_report_data(master,learner_master,
         r_res= pd.read_csv(os.path.join(container,learner_folder,stats_sub_dir,'r_res.csv'))
         # results_res =pd.read_csv(os.path.join(container,learner_folder,stats_sub_dir,'results_res.csv'))
 
-        res_path = 'Paintings/Processed/Res'
-        res_painting = 'P108(L Left)'
-        special_res_path = os.path.join(res_path,str(res_tile_cm), res_painting + '_1_divided_by_'+str(res_factor) + '_cropped_C00_R00.tif')
-        if not os.path.exists(special_res_path):
-            print('making res tile for ' + res_painting)
-            master_res = pd.read_parquet('master_res.parquet')
-            util.tile_res_specific(res_painting + '_1_divided_by_'+str(res_factor),master_res,
-                    output_size_cm = res_tile_cm,
-                    res_factor = res_factor,
-                    img_path_testing = res_path,
-                    verbose = False,
-                    center_tile = True,
-                    add = 0,
-                    update = False
-                    )
-
         testing_res_path = os.path.join(Path(img_path_testing).parent,'Res',str(res_tile_cm))
         res_files = [file for file in util.os_listdir(testing_res_path) if file.startswith(title + '_1_divided_by_'+str(res_factor))]
         orig_files = [file for file in util.os_listdir(os.path.join(img_path_testing,str(res_tile_cm))) if file.startswith(title + '_cropped')]
-        paths = [[os.path.join(img_path_testing,str(res_tile_cm),orig_files[0]),os.path.join(img_path,str(res_tile_cm),res_painting + '_cropped_C00_R00.tif')],
-                [os.path.join(testing_res_path,res_files[0]), special_res_path]]
+        paths = [[os.path.join(img_path_testing,str(res_tile_cm),orig_files[0]),'Paintings/Processed/Raw/20/P108(L Left)_cropped_C00_R00.tif'],
+                [os.path.join(testing_res_path,res_files[0]), 'resolution/Processed/Raw/20/P108(L Left)_1_divided_by_'+str(res_factor) + '_cropped_C00_R00.tif']]
         stats.plot_comparison_res(r_res,include_1 = full_r,legend = False,save = os.path.join(save_pre_path,save_folder,sub_dir,'res.png'),selected_paths =paths,show_fig = True)
 
         # slice_sizes = ['RF=1, 20cm','RF=20, 20cm','RF=1, 20cm','RF=20, 20cm']  #util.get_slice_sizes(rresults)
@@ -652,7 +659,7 @@ def make_report_data(master,learner_master,
         len_multiple_images = str(len(result_list))
         counts = pd.read_csv(Path(Path(img_path).parts[0],'counts.csv'))
         PJ_tile_count = "{:,}".format(counts[counts.artist =='Pollock'].expected.sum())
-        NP_tile_count = "{:,}".format(counts[counts.file.str.startswith(np_categories)].expected.sum())
+        NP_tile_count = "{:,}".format(counts[counts.file.str.startswith(('A','C','D','E','F','G'))].expected.sum())
         classification_thresh = str_round(classification_thresh, round_to)
         blue_poles_count = str(counts.groupby('file').in_folder.sum()['P108(J)'])
 
@@ -802,3 +809,27 @@ def make_report_data(master,learner_master,
         report_df = pd.DataFrame(data = temp_list,columns = ['variables','values'])
         # new_df.to_csv('test.csv',index=False)
         report_df.to_csv(Path(save_pre_path,save_folder,'report_data.csv'),index=False)
+
+        # cr = np.load(os.path.join(save_pre_path,save_folder,'combined.npy'))
+
+        # vz.pollock_map(cr,
+        #                cbar_buffer = 0.2,
+        #                hist_width = 0.4,
+        #                custom_cmap=True,
+        #                save_path=os.path.join(save_pre_path,save_folder,sub_dir,'pollock_map.png'),
+        #                gradient = False,
+        #                colors = [(1, 0, 0), (0, 0, 0), (0, 1, 0)],
+        #                relative_radial = False,
+        #                bin_width_px = 1)
+
+        # if not os.path.exists(os.path.join(save_pre_path,save_folder,'dial_figs')):
+        #     os.mkdir(os.path.join(save_pre_path,save_folder,'dial_figs'))
+        # comparators = plotting.clean_dial(full_img_path, test_img_prob, learner_results,
+        # path_to_images=path_to_images,
+        # ext=ext,
+        # save_name=os.path.join(save_pre_path,save_folder,'dial_figs','dial.png'),
+        # OneVote = one_vote)
+
+        # comparators = comparators+additional_dial_paintings
+        # print(comparators)
+        # plotting.make_inset_files_for_dial(comparators, full_img_path , save_pre_path, save_folder, path_to_comparators=path_to_images, ext=ext)
